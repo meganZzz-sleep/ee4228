@@ -17,6 +17,6 @@ cd ee4228
 
 !git config --global user.email <your email>
 
-!git commit -m "<any instructions"
+!git commit -m "<any instructions>"
 
 !git push origin main
