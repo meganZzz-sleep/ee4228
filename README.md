@@ -1,5 +1,8 @@
 # ee4228
 
+# Important Links:
+1. OneDrive: https://entuedu-my.sharepoint.com/:f:/g/personal/mseto001_e_ntu_edu_sg/EgzMJGEZbJNNpr43HbCDBJ4BM6bmopp2fHLGaaUCRqifxg?email=MSETO001%40e.ntu.edu.sg&e=UW5siz
+
 # 1. Clone this repository using: 
 !git clone https://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@github.com/meganZzz-sleep/ee4228.git
 
