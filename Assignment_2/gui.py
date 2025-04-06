@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QInputDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QInputDialog, QMessageBox, QDialog, QProgressBar
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 import cv2
@@ -73,6 +73,7 @@ class FaceRecognition:
     
 class RecognitionThread(QThread):
     registration_done = pyqtSignal(str, np.ndarray)
+    progress_updated = pyqtSignal(int)  # New signal for progress updates
     
     def __init__(self, cap, recognizer, required_frames=10, parent=None):
         super().__init__(parent)
@@ -106,6 +107,10 @@ class RecognitionThread(QThread):
                 embedding = get_embedding(face_img)
                 embeddings.append(embedding)
                 count += 1
+                # Emit progress as a percentage
+                progress = int((count / self.required_frames) * 100)
+                self.progress_updated.emit(progress)
+                
             except Exception as e:
                 print("Error in embedding generation:", e)
                 continue
@@ -175,6 +180,15 @@ class FaceRecognitionApp(QWidget):
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
             cv2.putText(frame, identity, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
+        # Resize frame to fit the image_label (640x480) while preserving aspect ratio
+        label_width, label_height = 640, 480
+        frame_height, frame_width = frame.shape[:2]
+        scale = min(label_width / frame_width, label_height / frame_height)
+        new_width = int(frame_width * scale)
+        new_height = int(frame_height * scale)
+        frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
+
+        # Convert to RGB and display
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = QImage(frame, frame.shape[1], frame.shape[0], QImage.Format_RGB888)
         pix = QPixmap.fromImage(img)
@@ -188,26 +202,39 @@ class FaceRecognitionApp(QWidget):
         if not ok or not name.strip():
             self.start_camera()  # Resume camera if no name provided
             return
-        
-        # Create an instance of the registration thread and pass the current video capture and recognizer
-        self.registration_thread = RecognitionThread(self.cap, self.recognizer, required_frames=10)
+
+        # Create and show a dialog with a progress bar
+        capture_dialog = QDialog(self)
+        capture_dialog.setWindowTitle("Capturing Face")
+        capture_dialog.setModal(True)
+        label = QLabel(f"Capturing 50 images for '{name}'...\nPlease face the camera.")
+        progress_bar = QProgressBar()
+        progress_bar.setMinimum(0)
+        progress_bar.setMaximum(100)  # Percentage
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(progress_bar)
+        capture_dialog.setLayout(layout)
+        capture_dialog.show()
+
+        # Start the registration thread
+        self.registration_thread = RecognitionThread(self.cap, self.recognizer, required_frames=50)
         self.registration_thread.person_name = name.strip()
-        self.registration_thread.registration_done.connect(self.handle_registration_done)
+        self.registration_thread.progress_updated.connect(progress_bar.setValue)  # Update progress bar
+        self.registration_thread.registration_done.connect(lambda n, e: self.handle_registration_done(n, e, capture_dialog))
         self.registration_thread.start()
 
-    def handle_registration_done(self, name, avg_embedding):
-        # Update the in-memory database
+    def handle_registration_done(self, name, avg_embedding, capture_dialog):
+        capture_dialog.accept()  # Close the dialog
         self.recognizer.known_faces[name] = avg_embedding
-        # Write the updated database back to the pickle file
         with open(self.recognizer.database_path, "wb") as f:
             pickle.dump(self.recognizer.known_faces, f)
         QMessageBox.information(self, "Add Face", f"Face for '{name}' added successfully!")
-        self.start_camera()  # Resume the live feed
+        self.start_camera()
 
     def closeEvent(self, event):
         self.freeze_camera()
         event.accept()
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
