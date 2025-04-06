@@ -5,7 +5,7 @@ from keras_facenet import FaceNet
 import os
 import pickle
 from tqdm import tqdm
-from albumentations import Compose, Rotate, HorizontalFlip, RandomBrightnessContrast, GaussNoise, Blur, Resize, ElasticTransform
+from albumentations import Compose, Rotate, HorizontalFlip, RandomBrightnessContrast, GaussNoise, Blur, ElasticTransform
 from scipy.spatial.distance import cosine
 
 # Load MTCNN for face detection
@@ -35,7 +35,7 @@ augment = Compose([
     GaussNoise(var_limit=(5.0, 30.0), p=0.3),
     Blur(blur_limit=3, p=0.2),
     ElasticTransform(alpha=1, sigma=45, alpha_affine=45, p=0.15),
-    Resize(160, 160, interpolation=cv2.INTER_AREA, p=1)  # Keep final size small
+    #Resize(160, 160, interpolation=cv2.INTER_AREA, p=1)  # Keep final size small
 ])
 
 def augment_image(image):
