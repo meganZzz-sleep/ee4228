@@ -247,6 +247,9 @@ class FaceRecognitionApp(QWidget):
         if not ok or not name.strip():
             return
         self.recognizer.del_from_database(name.strip())
+
+        #reload the database
+        self.recognizer.known_faces = self.recognizer.load_face_database()
         QMessageBox.information(self, "Delete Face", f"Face for '{name}' deleted successfully!")
 
     def handle_registration_done(self, name, avg_embedding, capture_dialog):
