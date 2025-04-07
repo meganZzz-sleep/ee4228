@@ -81,8 +81,13 @@ class FaceRecognition:
                 if dist < 0.4:
                     min_dist = dist
                     identity = name
+            #normalized confidence based off cosine distance
+            confidence = max(0, (0.4 - min_dist) / 0.4) * 100  # Normalize confidence to [0, 100]
+            #testing exponential confidence 
+            #confidence = np.exp(-min_dist * 5) * 100  # 5 is a scaling factor
+            #confidence = (1 - dist) * 100
 
-            results.append((x, y, w, h, identity))
+            results.append((x, y, w, h, identity,confidence))
 
         return results
     
@@ -111,7 +116,7 @@ class RecognitionThread(QThread):
                 continue
 
             # For simplicity, choose the first detected face
-            x, y, w, h, _ = results[0]
+            x, y, w, h, *_ = results[0]
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_img = img_rgb[y:y+h, x:x+w]
 
@@ -193,10 +198,13 @@ class FaceRecognitionApp(QWidget):
 
         results = self.recognizer.real_time_face_recognition(frame)
 
-        for (x, y, w, h, identity) in results:
+        for (x, y, w, h, identity,confidence) in results:
             color = (0, 255, 0) if identity != "Unknown" else (0, 0, 255)
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-            cv2.putText(frame, identity, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            label = f"{identity} ({confidence:.1f}%)" if identity != "Unknown" else "Unknown"
+            cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+
+            #cv2.putText(frame, identity, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
         # Resize frame to fit the image_label (640x480) while preserving aspect ratio
         label_width, label_height = 640, 480
