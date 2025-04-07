@@ -33,6 +33,21 @@ class FaceRecognition:
         except FileNotFoundError:
             print("ERROR: face_database.pkl not found! Run `python face_database.py` first.")
             exit()
+    
+    def del_from_database(self,name):
+        try:
+            with open("face_database.pkl", "rb") as f:
+                data = pickle.load(f)
+            if name in data:
+                del data[name]
+                with open("face_database.pkl", "wb") as f:
+                    pickle.dump(data, f)
+                print(f"Deleted {name} from the database.")
+            else:
+                print(f"{name} not found in the database.")
+        except FileNotFoundError:
+            print("ERROR: face_database.pkl not found! Run `python face_database.py` first.")
+            exit()
 
     def real_time_face_recognition(self, frame):
         img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -132,12 +147,14 @@ class FaceRecognitionApp(QWidget):
         self.start_button = QPushButton("Start Camera")
         self.freeze_button = QPushButton("Freeze Camera")
         self.add_recognition_button = QPushButton("Add Recognition")
+        self.delete_recognition_button = QPushButton("Delete Recognition")
         self.exit_button = QPushButton("Exit")
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.start_button)
         hbox.addWidget(self.freeze_button)
         hbox.addWidget(self.add_recognition_button)
+        hbox.addWidget(self.delete_recognition_button)
         hbox.addWidget(self.exit_button)
 
         vbox = QVBoxLayout()
@@ -154,6 +171,7 @@ class FaceRecognitionApp(QWidget):
         self.start_button.clicked.connect(self.start_camera)
         self.freeze_button.clicked.connect(self.freeze_camera)
         self.add_recognition_button.clicked.connect(self.add_recognition)
+        self.delete_recognition_button.clicked.connect(self.delete_recognition)
         self.exit_button.clicked.connect(self.close)
 
     def start_camera(self):
@@ -223,6 +241,13 @@ class FaceRecognitionApp(QWidget):
         self.registration_thread.progress_updated.connect(progress_bar.setValue)  # Update progress bar
         self.registration_thread.registration_done.connect(lambda n, e: self.handle_registration_done(n, e, capture_dialog))
         self.registration_thread.start()
+    
+    def delete_recognition(self):
+        name, ok = QInputDialog.getText(self, "Delete Face", "Enter name of the face to delete:")
+        if not ok or not name.strip():
+            return
+        self.recognizer.del_from_database(name.strip())
+        QMessageBox.information(self, "Delete Face", f"Face for '{name}' deleted successfully!")
 
     def handle_registration_done(self, name, avg_embedding, capture_dialog):
         capture_dialog.accept()  # Close the dialog
